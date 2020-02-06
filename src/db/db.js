@@ -139,7 +139,7 @@ export async function getDepartments(orgId, includeArchived = false) {
   }
 
   return ref.onSnapshot(snapshot => {
-    this.depts = snapshot.docs.map(doc => ({ ...{ id: doc.id }, ...doc.data() }));
+    this.depts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   });
 }
 
@@ -157,7 +157,7 @@ export async function getProducts(org, dept, includeArchived = false) {
   }
 
   return collectionRef.onSnapshot(snapshot => {
-    this.products = snapshot.docs.map(doc => ({ ...{ id: doc.id }, ...doc.data() }));
+    this.products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   });
 }
 
@@ -192,7 +192,7 @@ async function getOrgData(organisation) {
 async function getDeptData(department) {
   const { ref } = department;
   const products = await getChildren(ref, 'products', getProductData);
-  return { products, ...department.data() };
+  return { products, ...serializeDocument(department) };
 }
 
 async function getProductData(product) {

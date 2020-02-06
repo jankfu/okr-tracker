@@ -19,7 +19,7 @@
 import { mapState } from 'vuex';
 import { db } from '@/config/firebaseConfig';
 import NewsfeedCard from './NewsfeedCard.vue';
-import { serializeDocument } from '../../../db/db';
+import { serializeDocument } from '@/db/db';
 
 export default {
   data: () => ({
@@ -72,21 +72,17 @@ export default {
         .orderBy('timestamp', 'desc')
         .limit(30)
         .onSnapshot(async snapshot => {
-          const newDocuments = await snapshot
+          await snapshot
             .docChanges()
             .filter(d => d.type === 'added')
-            .filter(d => !this.eventTypes.includes(d.event))
-            .filter(d => !this.feed.map(el => el.id).includes(d.doc.id));
-
-          const newObjects = newDocuments
+            .filter(d => !this.feed.map(el => el.id).includes(d.doc.id))
             .map(d => d.doc)
-            .map(d => {
-              return serializeDocument(d);
+            .map(serializeDocument)
+            .filter(d => this.eventTypes.includes(d.event))
+            .forEach(obj => {
+              this.feed.push(obj);
             });
 
-          newObjects.forEach(obj => {
-            this.feed.push(obj);
-          });
           this.feed.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
         });
     },

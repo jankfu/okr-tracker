@@ -62,6 +62,15 @@
           </template>
         </v-select>
       </div>
+
+      <!-- <label class="form-field" v-if="product">
+        <span class="form-label">Flytt produkt til</span>
+        <select v-model="parent.new">
+          <option v-for="department in departments" :key="department.id" :value="department.id">{{
+            department.name
+          }}</option>
+        </select>
+      </label> -->
     </div>
     <div class="section">
       <button class="btn" @click="saveObject" :disabled="!dirty" v-tooltip.auto="`Lagre endringer`">Lagre</button>
@@ -78,12 +87,12 @@
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 import { storage } from '../../../config/firebaseConfig';
 import slugify from '../../../util/slugify';
 import * as Toast from '../../../util/toasts';
 import Audit from '../../../db/audit';
-import CalloutArchivedRestore from '../../../components/Callouts/CalloutArchivedRestore.vue';
+import CalloutArchivedRestore from '@/components/Callouts/CalloutArchivedRestore.vue';
 import { serializeDocument } from '../../../db/db';
 
 export default {
@@ -94,10 +103,15 @@ export default {
     dirty: false,
     team: [],
     unsubscribe: null,
+    parent: {
+      old: null,
+      new: null,
+    },
   }),
 
   computed: {
     ...mapState(['users', 'user']),
+    ...mapGetters(['departments']),
   },
 
   components: {
@@ -110,8 +124,10 @@ export default {
 
   watch: {
     async docref(ref) {
+      this.parent.old = this.docref.parent.parent.id;
+      this.parent.new = this.docref.parent.parent.id;
       this.product = null;
-      ref
+      this.unsubscribe = ref
         .get()
         .then(this.getProductfromRef)
         .catch(this.$errorHandler);
@@ -123,21 +139,27 @@ export default {
   },
 
   async mounted() {
+    this.parent.old = this.docref.parent.parent.id;
+    this.parent.new = this.docref.parent.parent.id;
     this.unsubscribe = this.docref.onSnapshot(this.getProductfromRef);
   },
 
   methods: {
     async saveObject() {
-      const teamList = this.team;
-      this.product.team = teamList.map(d => d.ref);
-      this.docref
+      // TODO: check for permissions
+
+      this.product.team = this.team;
+      await this.docref
         .update({ edited: new Date(), editedBy: this.user.ref, ...this.product })
         .then(Toast.savedChanges)
         .then(() => {
           Audit.updateProduct(this.docref);
         })
         .catch(this.$errorHandler);
-      this.product.team = teamList;
+
+      if (this.parent.old !== this.parent.new) {
+        // TODO: Move product to new parent
+      }
     },
 
     isAdmin() {
@@ -148,7 +170,7 @@ export default {
       this.product = snapshot.data();
 
       const team = this.product.team || [];
-      const promises = team.map(d => d.get());
+      const promises = team && team.length ? team.map(d => d.ref.get()) : [];
       const userRefs = await Promise.all(promises).catch(this.$errorHandler);
 
       this.team = userRefs

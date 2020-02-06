@@ -114,6 +114,9 @@ export const getters = {
   get_user_emails(state) {
     return state.users.map(d => d.id);
   },
+  departments(state) {
+    return state.nest.map(org => org.departments).flat();
+  },
 };
 
 export const mutations = {
